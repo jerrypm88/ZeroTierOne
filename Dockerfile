@@ -4,7 +4,7 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 ENV NODE_VERSION=17.x
 ENV ZEROTIER_ONE_VERSION=1.8.4
 
-ENV PATCH_ALLOW=0
+ENV PATCH_ALLOW=1
     
 RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-* && \
     sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://linuxsoft.cern.ch/centos-vault|g' /etc/yum.repos.d/CentOS-Linux-* && \
@@ -21,9 +21,13 @@ WORKDIR /src
 COPY ./patch /src/patch
 COPY ./config /src/config
 
+# update gcc to gcc 11
+RUN dnf install -y gcc-toolset-11 && scl enable gcc-toolset-11 bash && source /opt/rh/gcc-toolset-11/enable
+
 # Downloading and build latest libpqxx
 RUN LIBPQXX_VERSION=`curl --silent "https://api.github.com/repos/jtv/libpqxx/releases" | jq -r ".[0].tag_name"` && \
     curl https://codeload.github.com/jtv/libpqxx/tar.gz/refs/tags/${LIBPQXX_VERSION} --output /tmp/libpqxx.tar.gz && \
+    source /opt/rh/gcc-toolset-11/enable && \
     mkdir -p /src && \
     cd /src && \
     tar fxz /tmp/libpqxx.tar.gz && \
@@ -45,6 +49,7 @@ RUN curl https://codeload.github.com/zerotier/ZeroTierOne/tar.gz/refs/tags/${ZER
 RUN python3 /src/patch/patch.py
 
 RUN cd /src/ZeroTierOne && \
+    source /opt/rh/gcc-toolset-11/enable && \
     make central-controller CPPFLAGS+=-w && \
     cd /src/ZeroTierOne/attic/world && \
     bash build.sh
